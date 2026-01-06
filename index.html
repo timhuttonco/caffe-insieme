@@ -320,7 +320,7 @@
         }
 
         // Update donut chart
-        document.getElementById('chart-total-text').innerHTML = `${counts.home + counts.out}<br>Cups`;
+        document.getElementById('chart-total-text').innerHTML = `${counts.home + counts.out}<br>Coffees`;
         if (myChart) myChart.destroy();
         myChart = new Chart(document.getElementById('coffeeChart'), {
             type: 'doughnut',
