@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Prendiamo Un Caffè Insieme</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Caffè Insieme">
+    <meta name="theme-color" content="#fefae0">
+    
+    <link rel="icon" type="image/png" href="https://fonts.gstatic.com/s/e/notoemoji/latest/2615/512.png">
+    <link rel="apple-touch-icon" href="https://fonts.gstatic.com/s/e/notoemoji/latest/2615/512.png">
+
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlByZW5kaWFtbyBVbiBDYWZmw6ggSW5zaWVtZSIsCiAgInNob3J0X25hbWUiOiAiQ2FmZsOoIEluc2llbWUiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2ZlZmFlMCIsCiAgInRoZW1lX2NvbG9yIjogIiNiYzZjMjUiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJodHRwczovL2ZvbnRzLmdzdGF0aWMuY29tL3MvZS9ub3RvZW1vamlvL2xhdGVzdC8yNjE1LzUxMi5wbmciLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIsCiAgICAgICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSIKICAgIH0KICBdCn0=">
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #bc6c25;
+            --secondary: #dda15e;
+            --bg: #fefae0;
+            --text: #283618;
+            --white: #ffffff;
+            --accent: #606c38;
+            --out-color: #ae2012;
+            --gold: #ffb703;
+            --gold-border: #d4a017;
+        }
+
+        /* Layout & Reset */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: var(--bg); color: var(--text); margin: 0; 
+            display: flex; justify-content: center; 
+            padding: env(safe-area-inset-top) 10px env(safe-area-inset-bottom) 10px; 
+            user-select: none; /* Prevents text selection during button taps */
+        }
+        .container { width: 100%; max-width: 480px; background: var(--white); padding: 20px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-top: 10px; }
+        
+        /* Login/Logout UI */
+        .auth-header { display: flex; justify-content: flex-end; margin-bottom: 10px; gap: 10px; align-items: center; }
+        .auth-btn { background: none; border: 1px solid var(--secondary); border-radius: 8px; padding: 4px 10px; font-size: 0.7rem; color: var(--primary); cursor: pointer; font-weight: bold; }
+        .user-status { font-size: 0.7rem; color: var(--accent); font-weight: bold; }
+
+        h1 { font-size: 1.3rem; text-align: center; margin: 0; font-weight: 800; color: var(--primary); }
+        
+        /* Goal Progress Section */
+        .yearly-highlight { text-align: center; margin: 10px 0 15px 0; }
+        .yearly-label { font-size: 0.65rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+        .yearly-amount { font-size: 2.2rem; font-weight: 900; color: var(--text); display: block; margin-top: -5px; }
+
+        .goal-bar-container { width: 80%; margin: 5px auto 10px auto; }
+        .progress-track { background: #eee; height: 10px; border-radius: 10px; overflow: hidden; }
+        .progress-fill { background: var(--primary); height: 100%; width: 0%; transition: width 1s ease-in-out; }
+        .goal-text { font-size: 0.6rem; font-weight: bold; color: #999; margin-top: 4px; display: block; }
+        .goal-reached .progress-fill { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+
+        /* Donut Chart container */
+        .chart-box { width: 110px; height: 110px; margin: 0 auto 15px auto; position: relative; }
+        .chart-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; font-size: 0.7rem; pointer-events: none; line-height: 1.1; }
+
+        /* User Buttons (Harriet/Tim) */
+        .user-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+        .user-btn { flex: 1; padding: 12px; border: 2px solid var(--secondary); border-radius: 12px; background: var(--white); font-weight: bold; color: var(--primary); font-size: 0.9rem; }
+        .user-btn.active { background: var(--secondary); color: var(--white); }
+
+        /* Mode Switch (Home vs Out) */
+        .mode-selector { display: flex; background: #f1f1f1; border-radius: 12px; padding: 4px; margin-bottom: 12px; }
+        .mode-btn { flex: 1; border: none; padding: 8px; border-radius: 8px; font-weight: bold; background: transparent; color: #777; font-size: 0.8rem; }
+        .mode-btn.active { background: var(--white); color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        /* Inputs for "Out" mode */
+        #out-fields { display: none; gap: 8px; margin-bottom: 15px; animation: fadeIn 0.3s; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.9rem; width: 50%; }
+
+        /* Coffee Icon */
+        .coffee-section { text-align: center; margin-bottom: 10px; }
+        .coffee-icon { font-size: 50px; background: none; border: none; cursor: pointer; transition: transform 0.1s; }
+        .coffee-icon:active { transform: scale(0.9); }
+        .coffee-icon:disabled { opacity: 0.1; } /* Grays out if not logged in */
+
+        /* Data Display Boards */
+        .section-title { font-size: 0.7rem; font-weight: 800; color: var(--accent); margin: 12px 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #eee; padding-bottom: 2px;}
+        .board { background: #fcfcfc; border-radius: 15px; padding: 2px 12px; border: 1px solid #f4f4f4; margin-bottom: 5px; }
+        .board-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 0.8rem; border-bottom: 1px solid #f2f2f2; }
+        .board-row:last-child { border-bottom: none; }
+        
+        /* UI Badges and Labels */
+        .leader-badge { background: #fff3cd; color: #856404; font-size: 0.55rem; padding: 2px 6px; border-radius: 10px; font-weight: 900; margin-left: 6px; border: 1.5px solid var(--gold-border); display: inline-flex; align-items: center; gap: 3px; }
+        .visit-pill { font-size: 0.65rem; color: #888; margin-left: 4px; }
+        .val-save { color: var(--accent); font-weight: bold; }
+        .val-spent { color: var(--out-color); font-weight: bold; }
+        .history-date { font-size: 0.6rem; color: #999; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="auth-header">
+        <span id="user-display" class="user-status">Guest Mode</span>
+        <button id="auth-action-btn" class="auth-btn" onclick="toggleAuth()">Login</button>
+    </div>
+
+    <h1>☕ Prendiamo Un Caffè Insieme</h1>
+    
+    <div class="yearly-highlight" id="goal-container">
+        <span class="yearly-label">Total Saved 2026</span>
+        <span class="yearly-amount" id="big-yearly-total">£0.00</span>
+        <div class="goal-bar-container">
+            <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
+            <span class="goal-text" id="goal-progress-text">Target: £500</span>
+        </div>
+    </div>
+
+    <div class="chart-box">
+        <canvas id="coffeeChart"></canvas>
+        <div class="chart-label" id="chart-total-text">0<br>Cups</div>
+    </div>
+
+    <div class="user-selector">
+        <button class="user-btn" onclick="setUser('Harriet')" id="btn-Harriet">Harriet</button>
+        <button class="user-btn" onclick="setUser('Tim')" id="btn-Tim">Tim</button>
+    </div>
+
+    <div class="mode-selector">
+        <button class="mode-btn active" id="mode-home" onclick="setMode('home')">Home</button>
+        <button class="mode-btn" id="mode-out" onclick="setMode('out')">Out</button>
+    </div>
+
+    <div id="out-fields">
+        <input type="text" id="out-where" placeholder="Shop Name">
+        <input type="number" id="out-price" placeholder="£" step="0.01">
+    </div>
+
+    <div class="coffee-section">
+        <button class="coffee-icon" id="coffee-trigger" onclick="addCoffee()" disabled>☕</button>
+        <div id="auth-notice" style="font-size: 0.6rem; color: #ae2012; margin-top: 5px;">Login required to submit</div>
+    </div>
+
+    <div class="section-title" id="month-title">Monthly Savings</div>
+    <div id="home-month-board" class="board"></div>
+
+    <div class="section-title">Yearly Savings Leaderboard</div>
+    <div id="home-year-board" class="board"></div>
+
+    <div class="section-title">Spending Out</div>
+    <div id="out-board" class="board"></div>
+
+    <div class="section-title">Top Locations</div>
+    <div id="loc-board" class="board"></div>
+
+    <div class="section-title">Recent Activity</div>
+    <div id="history-board" class="board"></div>
+    <div style="text-align: center; font-size: 0.6rem; color: #999; margin-top: 5px; font-style: italic;">
+        Hold to delete
+    </div>
+</div>
+
+<script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, serverTimestamp, remove, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    // Initialise
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    const coffeeRef = ref(db, 'coffees'); // Pointer to the 'coffees' collection in the database
+
+    // States
+    let currentUser = null;   // Local name selected (Harriet/Tim)
+    let currentMode = 'home'; 
+    let myChart = null;       // Chart object
+    let goalReached = false;  // Set to false to prevent confetti loops
+    let authUser = null;      // Firebase Auth object
+    const GOAL = 500;
+    
+    // Only these emails could write to db - should be moved to env file in future
+    const allowedEmails = ['harriet-lowe@hotmail.co.uk', 'me@timhutton.co'];
+
+    // Handle Login/Logout button click
+    window.toggleAuth = () => {
+        if (auth.currentUser) signOut(auth);
+        else signInWithPopup(auth, provider).catch(err => alert("Sign in failed - check your connection or Authorized Domains in Firebase."));
+    };
+
+    // Auth watch - runs every time login status changes
+    onAuthStateChanged(auth, (user) => {
+        const triggerBtn = document.getElementById('coffee-trigger');
+        const authBtn = document.getElementById('auth-action-btn');
+        const userDisp = document.getElementById('user-display');
+        const notice = document.getElementById('auth-notice');
+
+        if (user && allowedEmails.includes(user.email)) {
+            // Run if a user logged in can submit
+            authUser = user;
+            userDisp.innerText = `Hi, ${user.displayName.split(' ')[0]}!`;
+            authBtn.innerText = "Logout";
+            notice.style.visibility = "hidden";
+            if(currentUser) triggerBtn.disabled = false;
+        } else {
+            // Run if not
+            if (user) { alert("Email not authorized."); signOut(auth); }
+            authUser = null;
+            userDisp.innerText = "Guest Mode (Read Only)";
+            authBtn.innerText = "Login";
+            notice.style.visibility = "visible";
+            triggerBtn.disabled = true;
+        }
+    });
+
+    // Select user (Harriet/Tim)
+    window.setUser = (n) => {
+        currentUser = n;
+        document.querySelectorAll('.user-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${n}`).classList.add('active');
+        // Enable coffee button if logged in + user selected (removes disabled)
+        if (authUser) document.getElementById('coffee-trigger').disabled = false;
+    };
+
+    // Switch mode bewteen in and out
+    window.setMode = (m) => {
+        currentMode = m;
+        document.getElementById('mode-home').classList.toggle('active', m === 'home');
+        document.getElementById('mode-out').classList.toggle('active', m === 'out');
+        document.getElementById('out-fields').style.display = (m === 'out') ? 'flex' : 'none';
+    };
+
+    // Send new entry to Firebase
+    window.addCoffee = () => {
+        if (!authUser) return alert("Please Login");
+        let amount = 3.90, loc = 'Home'; // Default home savings value
+        
+        if (currentMode === 'out') {
+            amount = parseFloat(document.getElementById('out-price').value) || 0;
+            loc = document.getElementById('out-where').value || 'Unknown Shop';
+            if (amount <= 0) return;
+        }
+
+        // Write to Firebase
+        push(coffeeRef, { 
+            user: currentUser, 
+            location: loc, 
+            mode: currentMode, 
+            amount, 
+            createdAt: serverTimestamp(), // Database-side timestamp
+            displayDate: new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) 
+        });
+
+        // Reset UI
+        document.getElementById('out-price').value = ''; 
+        document.getElementById('out-where').value = '';
+        
+        // Confetti! (Brown for home savings, Red for spending out)
+        confetti({ particleCount: 30, spread: 50, origin: { y: 0.9 }, colors: [currentMode === 'home' ? '#bc6c25' : '#ae2012'] });
+    };
+
+    // Delete entry from Firebase
+    window.handleDelete = (k) => { 
+        if (!authUser) return alert("Guests cannot delete");
+        if (confirm("Delete entry?")) remove(child(coffeeRef, k)); 
+    };
+
+    // Fires every time any data changes in Firebase, data var contains all of the data logged
+    onValue(coffeeRef, (snap) => {
+        const data = snap.val();
+        const logs = data ? Object.entries(data) : [];
+        const now = new Date();
+
+        // Local variables to calculate stats on the fly
+        let mH = { Harriet: 0, Tim: 0 }, yH = { Harriet: 0, Tim: 0 }, totalOut = { Harriet: 0, Tim: 0 }, locs = {}, counts = { home: 0, out: 0 };
+        let cupsYear = { Harriet: 0, Tim: 0 };
+        let outYear = { Harriet: 0, Tim: 0};
+
+        // Loop through every coffee entry ever made
+        logs.forEach(([k, log]) => {
+            const d = new Date(log.createdAt);
+            const isYear = d.getFullYear() === now.getFullYear();
+            
+            if (log.mode === 'home') {
+                counts.home++;
+                if (isYear) {
+                    yH[log.user] += log.amount;
+                    cupsYear[log.user] += 1;
+                }
+                if (isYear && d.getMonth() === now.getMonth()) mH[log.user] += log.amount;
+            } else {
+                counts.out++;
+                totalOut[log.user] += log.amount;
+                outYear[log.user] += 1;
+                // Standardise location name casing for grouping
+                const cleanLoc = log.location.trim().toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                if (!locs[cleanLoc]) locs[cleanLoc] = { total: 0, visits: 0 };
+                locs[cleanLoc].total += log.amount;
+                locs[cleanLoc].visits += 1;
+            }
+        });
+
+        // Update header goal
+        const yearlyTotal = yH.Harriet + yH.Tim;
+        document.getElementById('big-yearly-total').innerText = `£${yearlyTotal.toFixed(2)}`;
+        const progress = Math.min((yearlyTotal / GOAL) * 100, 100);
+        document.getElementById('progress-bar').style.width = progress + '%';
+        document.getElementById('goal-progress-text').innerText = `£${yearlyTotal.toFixed(0)} / £${GOAL}`;
+        
+        // Check if goal reached for the first time
+        if (yearlyTotal >= GOAL) {
+            document.getElementById('goal-container').classList.add('goal-reached');
+            if (!goalReached) { confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } }); goalReached = true; }
+        }
+
+        // Update donut chart
+        document.getElementById('chart-total-text').innerHTML = `${counts.home + counts.out}<br>Cups`;
+        if (myChart) myChart.destroy();
+        myChart = new Chart(document.getElementById('coffeeChart'), {
+            type: 'doughnut',
+            data: { datasets: [{ data: [counts.home, counts.out], backgroundColor: ['#bc6c25', '#ae2012'], borderWidth: 0 }] },
+            options: { cutout: '80%', plugins: { legend: { display: false } } }
+        });
+
+        // Render boards
+        const leadBadge = '<span class="leader-badge">🏆 LEADER</span>';
+        document.getElementById('month-title').innerText = now.toLocaleString('default', { month: 'long' }) + " Savings";
+        
+        // Monthly Savings
+        document.getElementById('home-month-board').innerHTML = `
+            <div class="board-row"><span>Harriet ${mH.Harriet > mH.Tim ? leadBadge : ''}</span><span class="val-save">£${mH.Harriet.toFixed(2)}</span></div>
+            <div class="board-row"><span>Tim ${mH.Tim > mH.Harriet ? leadBadge : ''}</span><span class="val-save">£${mH.Tim.toFixed(2)}</span></div>`;
+
+        // Yearly Savings & Total Number of coffees
+        document.getElementById('home-year-board').innerHTML = `
+            <div class="board-row"><span>Harriet ${cupsYear.Harriet > cupsYear.Tim ? leadBadge : ''} <span class="visit-pill">(${cupsYear.Harriet} coffees)</span></span><span class="val-save">£${yH.Harriet.toFixed(2)}</span></div>
+            <div class="board-row"><span>Tim ${cupsYear.Tim > cupsYear.Harriet ? leadBadge : ''} <span class="visit-pill">(${cupsYear.Tim} coffees)</span></span><span class="val-save">£${yH.Tim.toFixed(2)}</span></div>`;
+
+        // Spending totals
+        document.getElementById('out-board').innerHTML = `
+        <div class="board-row"><span>Harriet ${outYear.Tim > outYear.Harriet ? leadBadge : ''} <span class="visit-pill">(${outYear.Harriet} coffees)</span></span><span class="val-spent">£${totalOut.Harriet.toFixed(2)}</span></div>
+        <div class="board-row"><span>Tim ${outYear.Harriet > outYear.Tim ? leadBadge : ''}<span class="visit-pill">(${outYear.Tim} coffees)</span></span><span class="val-spent">£${totalOut.Tim.toFixed(2)}</span></div>`;
+        
+        // Top 5 locations by spend
+        const sortedLocs = Object.entries(locs).sort((a,b) => b[1].total - a[1].total).slice(0, 5);
+        document.getElementById('loc-board').innerHTML = sortedLocs.map(([l, d]) => `<div class="board-row"><span>${l} <span class="visit-pill">(${d.visits} visits)</span></span><span class="val-spent">£${d.total.toFixed(2)}</span></div>`).join('') || '<div class="board-row">None</div>';
+
+        // Recent Activity (Top 5 items, starting from most recent)
+        document.getElementById('history-board').innerHTML = logs.reverse().slice(0, 5).map(([k, log]) => `
+        <div class="board-row" onmousedown="window.pT=setTimeout(()=>handleDelete('${k}'),800)" onmouseup="clearTimeout(window.pT)" ontouchstart="window.pT=setTimeout(()=>handleDelete('${k}'),800)" ontouchend="clearTimeout(window.pT)">
+            <div style="display:flex; flex-direction:column"><span><strong>${log.user}</strong> @ ${log.location}</span><span class="history-date">${log.displayDate || 'Now'}</span></div>
+            <span class="${log.mode === 'home' ? 'val-save' : 'val-spent'}">£${log.amount.toFixed(2)}</span>
+        </div>`).join('') || '<div class="board-row">No history</div>';
+    });
+</script>
+</body>
+</html>
