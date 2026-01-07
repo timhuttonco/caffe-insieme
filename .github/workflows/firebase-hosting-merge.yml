@@ -13,8 +13,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create Config Files
         run: |
-          echo "${{ secrets.FIREBASE_CONFIG_JS }}" > firebase-config.js
-          echo "${{ secrets.AUTH_CONFIG_JS }}" > auth-config.js
+          cat <<EOF > firebase-config.js
+          ${{ secrets.FIREBASE_CONFIG_JS }}
+          EOF
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
