@@ -344,8 +344,8 @@
 
         // Spending totals
         document.getElementById('out-board').innerHTML = `
-        <div class="board-row"><span>Harriet ${outYear.Tim > outYear.Harriet ? leadBadge : ''} <span class="visit-pill">(${outYear.Harriet} coffees)</span></span><span class="val-spent">£${totalOut.Harriet.toFixed(2)}</span></div>
-        <div class="board-row"><span>Tim ${outYear.Harriet > outYear.Tim ? leadBadge : ''}<span class="visit-pill">(${outYear.Tim} coffees)</span></span><span class="val-spent">£${totalOut.Tim.toFixed(2)}</span></div>`;
+        <div class="board-row"><span>Harriet ${totalOut.Tim > totalOut.Harriet ? leadBadge : ''} <span class="visit-pill">(${outYear.Harriet} coffees)</span></span><span class="val-spent">£${totalOut.Harriet.toFixed(2)}</span></div>
+        <div class="board-row"><span>Tim ${totalOut.Harriet > totalOut.Tim ? leadBadge : ''}<span class="visit-pill">(${outYear.Tim} coffees)</span></span><span class="val-spent">£${totalOut.Tim.toFixed(2)}</span></div>`;
         
         // Top 5 locations by spend
         const sortedLocs = Object.entries(locs).sort((a,b) => b[1].total - a[1].total).slice(0, 5);
