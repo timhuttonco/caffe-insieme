@@ -74,8 +74,8 @@
         .mode-btn { flex: 1; border: none; padding: 8px; border-radius: 8px; font-weight: bold; background: transparent; color: #777; font-size: 0.8rem; }
         .mode-btn.active { background: var(--white); color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        /* Inputs for "Out" mode */
-        #out-fields { display: none; gap: 8px; margin-bottom: 15px; animation: fadeIn 0.3s; }
+        /* Inputs for "Out" and "Beans" modes */
+        #out-fields, #beans-fields { display: none; gap: 8px; margin-bottom: 15px; animation: fadeIn 0.3s; }
         input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 0.9rem; width: 50%; }
 
         /* Coffee Icon */
@@ -132,11 +132,17 @@
     <div class="mode-selector">
         <button class="mode-btn active" id="mode-home" onclick="setMode('home')">Home</button>
         <button class="mode-btn" id="mode-out" onclick="setMode('out')">Out</button>
+        <button class="mode-btn" id="mode-beans" onclick="setMode('beans')">Beans</button>
     </div>
 
     <div id="out-fields">
         <input type="text" id="out-where" placeholder="Shop Name">
         <input type="number" id="out-price" placeholder="£" step="0.01">
+    </div>
+
+    <div id="beans-fields">
+        <input type="text" id="beans-where" placeholder="Beans / Brand (optional)">
+        <input type="number" id="beans-price" placeholder="£ bag" step="0.01">
     </div>
 
     <div class="coffee-section">
@@ -149,6 +155,9 @@
 
     <div class="section-title">Yearly Savings Leaderboard</div>
     <div id="home-year-board" class="board"></div>
+
+    <div class="section-title">Bean Costs 2026</div>
+    <div id="beans-board" class="board"></div>
 
     <div class="section-title">Spending Out</div>
     <div id="out-board" class="board"></div>
@@ -228,12 +237,16 @@
         if (authUser) document.getElementById('coffee-trigger').disabled = false;
     };
 
-    // Switch mode bewteen in and out
+    // Switch mode between home, out and beans
     window.setMode = (m) => {
         currentMode = m;
         document.getElementById('mode-home').classList.toggle('active', m === 'home');
         document.getElementById('mode-out').classList.toggle('active', m === 'out');
+        document.getElementById('mode-beans').classList.toggle('active', m === 'beans');
         document.getElementById('out-fields').style.display = (m === 'out') ? 'flex' : 'none';
+        document.getElementById('beans-fields').style.display = (m === 'beans') ? 'flex' : 'none';
+        // Use a bean icon when logging a bean purchase, otherwise the coffee cup
+        document.getElementById('coffee-trigger').innerText = (m === 'beans') ? '🫘' : '☕';
     };
 
     // Send new entry to Firebase
@@ -245,24 +258,32 @@
             amount = parseFloat(document.getElementById('out-price').value) || 0;
             loc = document.getElementById('out-where').value || 'Unknown Shop';
             if (amount <= 0) return;
+        } else if (currentMode === 'beans') {
+            // Cost of a bag of beans - subtracted from total savings
+            amount = parseFloat(document.getElementById('beans-price').value) || 0;
+            loc = document.getElementById('beans-where').value || 'Beans';
+            if (amount <= 0) return;
         }
 
         // Write to Firebase
-        push(coffeeRef, { 
-            user: currentUser, 
-            location: loc, 
-            mode: currentMode, 
-            amount, 
+        push(coffeeRef, {
+            user: currentUser,
+            location: loc,
+            mode: currentMode,
+            amount,
             createdAt: serverTimestamp(), // Database-side timestamp
-            displayDate: new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) 
+            displayDate: new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
         });
 
         // Reset UI
-        document.getElementById('out-price').value = ''; 
+        document.getElementById('out-price').value = '';
         document.getElementById('out-where').value = '';
-        
-        // Confetti! (Brown for home savings, Red for spending out)
-        confetti({ particleCount: 30, spread: 50, origin: { y: 0.9 }, colors: [currentMode === 'home' ? '#bc6c25' : '#ae2012'] });
+        document.getElementById('beans-price').value = '';
+        document.getElementById('beans-where').value = '';
+
+        // Confetti! (Brown for home savings, Red for spending out, Coffee-bean brown for beans)
+        const confColor = currentMode === 'home' ? '#bc6c25' : (currentMode === 'beans' ? '#6f4e37' : '#ae2012');
+        confetti({ particleCount: 30, spread: 50, origin: { y: 0.9 }, colors: [confColor] });
     };
 
     // Delete entry from Firebase
@@ -281,6 +302,7 @@
         let mH = { Harriet: 0, Tim: 0 }, yH = { Harriet: 0, Tim: 0 }, totalOut = { Harriet: 0, Tim: 0 }, locs = {}, counts = { home: 0, out: 0 };
         let cupsYear = { Harriet: 0, Tim: 0 };
         let outYear = { Harriet: 0, Tim: 0};
+        let mBeans = { Harriet: 0, Tim: 0 }, yBeans = { Harriet: 0, Tim: 0 }; // Bean bag spend this month / year
 
         // Loop through every coffee entry ever made
         logs.forEach(([k, log]) => {
@@ -294,6 +316,10 @@
                     cupsYear[log.user] += 1;
                 }
                 if (isYear && d.getMonth() === now.getMonth()) mH[log.user] += log.amount;
+            } else if (log.mode === 'beans') {
+                // Bean bag purchase - a cost against the savings, not a coffee
+                if (isYear) yBeans[log.user] += log.amount;
+                if (isYear && d.getMonth() === now.getMonth()) mBeans[log.user] += log.amount;
             } else {
                 counts.out++;
                 totalOut[log.user] += log.amount;
@@ -306,8 +332,12 @@
             }
         });
 
+        // Net savings = home savings minus bean bag spend (per user)
+        const mNet = { Harriet: mH.Harriet - mBeans.Harriet, Tim: mH.Tim - mBeans.Tim };
+        const yNet = { Harriet: yH.Harriet - yBeans.Harriet, Tim: yH.Tim - yBeans.Tim };
+
         // Update header goal
-        const yearlyTotal = yH.Harriet + yH.Tim;
+        const yearlyTotal = yNet.Harriet + yNet.Tim;
         document.getElementById('big-yearly-total').innerText = `£${yearlyTotal.toFixed(2)}`;
         const progress = Math.min((yearlyTotal / GOAL) * 100, 100);
         document.getElementById('progress-bar').style.width = progress + '%';
@@ -332,15 +362,22 @@
         const leadBadge = '<span class="leader-badge">🏆 LEADER</span>';
         document.getElementById('month-title').innerText = now.toLocaleString('default', { month: 'long' }) + " Savings";
         
-        // Monthly Savings
+        // Monthly Savings (net of beans)
         document.getElementById('home-month-board').innerHTML = `
-            <div class="board-row"><span>Harriet ${mH.Harriet > mH.Tim ? leadBadge : ''}</span><span class="val-save">£${mH.Harriet.toFixed(2)}</span></div>
-            <div class="board-row"><span>Tim ${mH.Tim > mH.Harriet ? leadBadge : ''}</span><span class="val-save">£${mH.Tim.toFixed(2)}</span></div>`;
+            <div class="board-row"><span>Harriet ${mNet.Harriet > mNet.Tim ? leadBadge : ''}</span><span class="val-save">£${mNet.Harriet.toFixed(2)}</span></div>
+            <div class="board-row"><span>Tim ${mNet.Tim > mNet.Harriet ? leadBadge : ''}</span><span class="val-save">£${mNet.Tim.toFixed(2)}</span></div>`;
 
-        // Yearly Savings & Total Number of coffees
+        // Yearly Savings (net of beans) & Total Number of coffees
         document.getElementById('home-year-board').innerHTML = `
-            <div class="board-row"><span>Harriet ${cupsYear.Harriet > cupsYear.Tim ? leadBadge : ''} <span class="visit-pill">(${cupsYear.Harriet} coffees)</span></span><span class="val-save">£${yH.Harriet.toFixed(2)}</span></div>
-            <div class="board-row"><span>Tim ${cupsYear.Tim > cupsYear.Harriet ? leadBadge : ''} <span class="visit-pill">(${cupsYear.Tim} coffees)</span></span><span class="val-save">£${yH.Tim.toFixed(2)}</span></div>`;
+            <div class="board-row"><span>Harriet ${yNet.Harriet > yNet.Tim ? leadBadge : ''} <span class="visit-pill">(${cupsYear.Harriet} coffees)</span></span><span class="val-save">£${yNet.Harriet.toFixed(2)}</span></div>
+            <div class="board-row"><span>Tim ${yNet.Tim > yNet.Harriet ? leadBadge : ''} <span class="visit-pill">(${cupsYear.Tim} coffees)</span></span><span class="val-save">£${yNet.Tim.toFixed(2)}</span></div>`;
+
+        // Bean Costs this year (subtracted from savings above)
+        const beansTotal = yBeans.Harriet + yBeans.Tim;
+        document.getElementById('beans-board').innerHTML = `
+            <div class="board-row"><span>Harriet</span><span class="val-spent">£${yBeans.Harriet.toFixed(2)}</span></div>
+            <div class="board-row"><span>Tim</span><span class="val-spent">£${yBeans.Tim.toFixed(2)}</span></div>
+            <div class="board-row"><span><strong>Total spent on beans</strong></span><span class="val-spent">£${beansTotal.toFixed(2)}</span></div>`;
 
         // Spending totals
         document.getElementById('out-board').innerHTML = `
@@ -354,8 +391,8 @@
         // Recent Activity (Top 5 items, starting from most recent)
         document.getElementById('history-board').innerHTML = logs.reverse().slice(0, 5).map(([k, log]) => `
         <div class="board-row" onmousedown="window.pT=setTimeout(()=>handleDelete('${k}'),800)" onmouseup="clearTimeout(window.pT)" ontouchstart="window.pT=setTimeout(()=>handleDelete('${k}'),800)" ontouchend="clearTimeout(window.pT)">
-            <div style="display:flex; flex-direction:column"><span><strong>${log.user}</strong> @ ${log.location}</span><span class="history-date">${log.displayDate || 'Now'}</span></div>
-            <span class="${log.mode === 'home' ? 'val-save' : 'val-spent'}">£${log.amount.toFixed(2)}</span>
+            <div style="display:flex; flex-direction:column"><span>${log.mode === 'beans' ? '🫘 ' : ''}<strong>${log.user}</strong> @ ${log.location}</span><span class="history-date">${log.displayDate || 'Now'}</span></div>
+            <span class="${log.mode === 'home' ? 'val-save' : 'val-spent'}">${log.mode === 'beans' ? '-' : ''}£${log.amount.toFixed(2)}</span>
         </div>`).join('') || '<div class="board-row">No history</div>';
     });
 </script>
